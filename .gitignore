@@ -1,9 +1,10 @@
-# В репозитории только инструменты и заметки. Файлы игры (ресурсы, драйверы,
-# сохранения) и результаты экспорта (export/) не коммитятся.
+# Only the tools and notes are versioned. Game files (resources, drivers,
+# saved games) and export results (export/) are never committed.
 /*
 !/.gitignore
 !/.gitattributes
 !/CLAUDE.md
+!/README.md
 !/tools/
 
 __pycache__/

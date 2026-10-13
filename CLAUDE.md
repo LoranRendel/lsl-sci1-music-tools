@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is **not a software project** but an installed DOS game: *Leisure Suit Larry 1: In the Land of the Lounge Lizards* (Sierra On-Line VGA remake, 1991, floppy version, SCI engine, `VERSION` = 2.0). The build comes from DJ OldGames (`#info.txt`); the game is meant to be run in DOSBox. The only code is the Python tooling in `tools/` (no build system, linters or tests).
 
-The directory is a git repository, but only `tools/`, `CLAUDE.md` and `.gitignore` are under version control (whitelist in `.gitignore`): game files and export results (`export/`) are never committed.
+The directory is a git repository, but only `tools/`, `README.md`, `CLAUDE.md`, `.gitignore` and `.gitattributes` are under version control (whitelist in `.gitignore`): game files and export results (`export/`) are never committed.
 
 Nearly all other files are binary resources of the 1991 original. Do not modify them unless the user explicitly asks; the only text files are `.BAT`, `RESOURCE.*` (except `.000–.002` and `.MAP`), `INSTALL.TXT`, `INTERP.TXT`, `#info.txt`.
 
