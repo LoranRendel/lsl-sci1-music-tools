@@ -1,8 +1,8 @@
-"""Экспорт мелодий игры: MIDI, WAV для каждой звуковой карты, VGM.
+"""Экспорт мелодий игры: MIDI, FLAC для каждой звуковой карты, VGZ, партия спикера.
 
     python tools/export_music.py              # все мелодии в export/music
     python tools/export_music.py --only 390   # выбранные
-    python tools/export_music.py --midi-only  # только MIDI (несколько секунд)
+    python tools/export_music.py --fast       # всё, кроме FLAC и VGZ (несколько секунд)
     python tools/export_music.py --list       # список мелодий
     python tools/export_music.py --info 390   # дорожки и каналы звука
 
@@ -13,6 +13,9 @@
     flac-<карта>/      настоящий драйвер карты в эмуляторе + модель микросхемы
                        (карты — CARDS в sciplayer.py)
     vgz-soundblaster/  AdLib/Sound Blaster: VGM (журнал записей в YM3812, с циклом), сжатый gzip
+    spk-log/           PC-спикер: делитель таймера на каждый тик (speaker.py), ~1 КБ на мелодию
+    furnace-speaker/   PC-спикер: модуль трекера Furnace (furnace.py)
+    speaker-player.html  проигрыватель всех логов спикера в браузере
 """
 import argparse
 import os
@@ -23,8 +26,11 @@ from sciresource import ResourceManager  # noqa: E402
 from scisound import DEVICES, TICKS_PER_SECOND, parse_events, parse_sound, to_midi  # noqa: E402
 from sciplayer import CARDS, GAME_DIR, Song, run, write_flac, write_vgm  # noqa: E402
 from mt32gm import GmMapper, mt32_setup_sysex, to_gm_midi  # noqa: E402
+from speaker import SPEAKER, speaker_log, write_log, write_player  # noqa: E402
+from furnace import write_fur  # noqa: E402
 
 SOUND, PATCH = 4, 9
+ALBUM = "Leisure Suit Larry 1 VGA"
 ADLIB, MT32 = 0x00, 0x0C
 # Устройства, чьи партии выгружаются в midi-<имя>/ (дорожки 0x06 и 0x16 драйверы игры не берут)
 MIDI_DEVICES = {"adlib": ADLIB, "mt32": MT32, "cms": 0x09, "tandy": 0x13, "speaker": 0x12}
@@ -125,7 +131,7 @@ def print_info(rm, number):
 
 
 def export(rm, out_dir, numbers, audio=True):
-    dirs = {"midi-gm": "midi-gm", "vgm": "vgz-soundblaster"}
+    dirs = {"midi-gm": "midi-gm", "vgm": "vgz-soundblaster", "spk": "spk-log", "fur": "furnace-speaker"}
     dirs.update({"midi-" + key: "midi-" + key for key in MIDI_DEVICES})
     dirs.update({card.key: "flac-" + card.key for card in CARDS})
     dirs = {k: os.path.join(out_dir, v) for k, v in dirs.items()}
@@ -142,7 +148,7 @@ def export(rm, out_dir, numbers, audio=True):
         missing = []
         for card in CARDS if audio else ():
             if card.device in tracks:
-                tags = {"title": title, "album": f"Leisure Suit Larry 1 VGA — {card.title}",
+                tags = {"title": title, "album": f"{ALBUM} — {card.title}",
                         "track": str(number), "date": "1991", "comment": notes}
                 write_flac(card.render(rm, tracks[card.device]),
                            os.path.join(dirs[card.key], name + ".flac"), tags)
@@ -164,10 +170,16 @@ def export(rm, out_dir, numbers, audio=True):
                 with open(os.path.join(dirs["midi-" + key], name + ".mid"), "wb") as f:
                     f.write(to_midi(tracks[dev], title, mt32_setup if dev == MT32 else ()))
 
+        if SPEAKER in tracks:
+            divisors, spk_loop = speaker_log(rm, tracks[SPEAKER])
+            write_log(os.path.join(dirs["spk"], name + ".spk.gz"), divisors, spk_loop)
+            write_fur(os.path.join(dirs["fur"], name + ".fur"), divisors, spk_loop, title, ALBUM)
+
         length = song.end_tick / TICKS_PER_SECOND
         loop = "" if song.loop_tick is None else f", цикл с {song.loop_tick / TICKS_PER_SECOND:.1f} с"
         absent = f"; нет партии для: {', '.join(missing)}" if missing else ""
         print(f"{name}: {length:.1f} с{loop}{absent}")
+    write_player(dirs["spk"], os.path.join(out_dir, "speaker-player.html"), ALBUM)
 
 
 def main():
@@ -175,7 +187,7 @@ def main():
     ap.add_argument("--game", default=GAME_DIR, help="каталог игры (по умолчанию — родитель tools/)")
     ap.add_argument("--out", default=os.path.join(GAME_DIR, "export", "music"))
     ap.add_argument("--only", type=int, nargs="+", metavar="N", help="номера звуков")
-    ap.add_argument("--midi-only", action="store_true", help="только MIDI (быстро)")
+    ap.add_argument("--fast", action="store_true", help="без FLAC и VGZ (несколько секунд)")
     ap.add_argument("--list", action="store_true", help="список мелодий")
     ap.add_argument("--info", type=int, metavar="N", help="дорожки и каналы звука N")
     args = ap.parse_args()
@@ -187,7 +199,7 @@ def main():
         for n in MELODIES:
             print(file_name(n))
     else:
-        export(rm, args.out, args.only or MELODIES, audio=not args.midi_only)
+        export(rm, args.out, args.only or MELODIES, audio=not args.fast)
 
 
 if __name__ == "__main__":
