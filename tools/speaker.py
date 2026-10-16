@@ -147,7 +147,7 @@ li .d { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 13px
       <span class="time" id="time">0:00 / 0:00</span>
     </div>
     <div class="row">
-      <label><input type="checkbox" id="loop" checked> Повтор с точки цикла</label>
+      <label><input type="checkbox" id="loop" checked> Повтор (с точки цикла ↻, если есть)</label>
       <label><input type="checkbox" id="next" checked> Затем следующая</label>
       <label>Громкость <input type="range" id="vol" min="0" max="100" value="35"></label>
     </div>
@@ -219,11 +219,13 @@ function pump() {
   schedTick = until;
   if (idx >= ev.length && until >= s.ticks) {
     const endTime = startTime + (s.ticks - startTick) / RATE;
-    if ($("loop").checked && s.loop !== null) {
-      // Продолжаем с точки цикла без разрыва: сдвигаем начало отсчёта
-      startTime = endTime; startTick = s.loop;
+    if ($("loop").checked) {
+      // Продолжаем с точки цикла (у мелодий без неё — с начала) без разрыва:
+      // сдвигаем начало отсчёта
+      const from = s.loop ?? 0;
+      startTime = endTime; startTick = from;
       idx = 0;
-      while (idx + 1 < ev.length && ev[idx + 1][0] <= s.loop) idx++;
+      while (idx + 1 < ev.length && ev[idx + 1][0] <= from) idx++;
       apply(ev[idx][1], startTime); idx++;
     } else if (ctx.currentTime >= endTime) {
       gain.gain.setValueAtTime(0, endTime);
@@ -266,7 +268,31 @@ function select(i, autoplay) {
   if (s.loop !== null) { mark.style.display = "block"; mark.style.left = (100 * s.loop / s.ticks) + "%"; }
   else mark.style.display = "none";
   document.querySelectorAll("li").forEach((li, k) => li.classList.toggle("on", k === i));
+  saveHash();
   if (autoplay) play(); else { $("play").textContent = "▶ Играть"; draw(); }
+}
+
+// Состояние в адресе: #song=390&loop=1&next=1&vol=35 — ссылку можно сохранить или передать.
+// Песня по номеру звука (начало названия до « - »).
+const songId = s => s.title.split(" - ")[0];
+function saveHash() {
+  const p = new URLSearchParams();
+  if (cur >= 0) p.set("song", songId(SONGS[cur]));
+  p.set("loop", $("loop").checked ? 1 : 0);
+  p.set("next", $("next").checked ? 1 : 0);
+  p.set("vol", $("vol").value);
+  const hash = "#" + p.toString();
+  if (location.hash !== hash) history.replaceState(null, "", hash);
+}
+function loadHash() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  if (p.has("loop")) $("loop").checked = p.get("loop") !== "0";
+  if (p.has("next")) $("next").checked = p.get("next") !== "0";
+  const vol = parseInt(p.get("vol"), 10);
+  if (vol >= 0 && vol <= 100) { $("vol").value = vol; setVolume(); }
+  const i = SONGS.findIndex(s => songId(s) === p.get("song"));
+  // Без нажатия браузер не даст начать звук, поэтому песня только выбирается
+  if (i >= 0 && i !== cur) select(i, playing);
 }
 
 const list = $("list");
@@ -281,7 +307,11 @@ SONGS.forEach((s, i) => {
   list.appendChild(li);
 });
 $("play").onclick = () => playing ? stop() : play();
-$("vol").oninput = setVolume;
+$("vol").oninput = () => { setVolume(); saveHash(); };
+$("loop").onchange = $("next").onchange = saveHash;
+window.addEventListener("hashchange", loadHash);
+loadHash();
+saveHash();
 function seekTo(frac) {
   if (cur < 0) return;
   const t = Math.round(Math.max(0, Math.min(1, frac)) * SONGS[cur].ticks);
