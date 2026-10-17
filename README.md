@@ -36,7 +36,7 @@ Console output is in Russian; in Git Bash on Windows set `PYTHONIOENCODING=utf-8
 | `vgz-soundblaster/` | AdLib register log as VGM (YM3812), with loop point and GD3 tags — for VGM players |
 | `spk-log/` | PC speaker part as a timer-divisor-per-tick log (`.spk.gz`, ~1 KB per melody) — exactly what `STD.DRV` wrote to the timer |
 | `furnace-speaker/` | PC speaker part as [Furnace](https://github.com/tildearrow/furnace) modules (`.fur`, Intel 8253 chip): one row per 60 Hz tick, note + `E5xx` fine pitch (within ~1 cent of the driver), loop via `0Bxx` |
-| `speaker-player.html` | Self-contained browser player for all speaker logs (WebAudio square wave, seek; repeat works for every melody — from the loop point if it has one, otherwise from the start); the selected melody and settings are kept in the URL hash, e.g. `speaker-player.html#song=390&loop=1&next=0&vol=35` |
+| `speaker-player.html` | Self-contained browser player for all speaker logs (WebAudio square wave, seek; repeat works for every melody — from the loop point if it has one, otherwise from the start; "play next" is greyed out while repeat is on); the selected melody and settings are kept in the URL hash, e.g. `speaker-player.html#song=390&loop=1&next=0&vol=35` |
 | `midi-gm/` | General MIDI converted from the MT-32 part (most complete arrangement) |
 | `midi-<device>/` | Original part for each device (`adlib`, `mt32`, `cms`, `tandy`, `speaker`); program numbers refer to the device's own patch, not GM. MT-32 files begin with the SysEx setup from `patch.001`, so they play with the game's custom timbres on an MT-32 or Munt |
 

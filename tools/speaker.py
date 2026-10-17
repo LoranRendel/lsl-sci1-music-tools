@@ -125,6 +125,7 @@ button:focus-visible, input:focus-visible, li:focus-visible { outline: 2px solid
 .mark { position: absolute; top: -3px; width: 2px; height: 12px; background: var(--muted); display: none; }
 .time { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
 label { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+label:has(input:disabled) { opacity: 0.45; }
 ol { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 10px;
   background: var(--panel); overflow: hidden; }
 li { display: flex; gap: 12px; padding: 8px 14px; border-top: 1px solid var(--line); cursor: pointer; }
@@ -288,6 +289,7 @@ function loadHash() {
   const p = new URLSearchParams(location.hash.slice(1));
   if (p.has("loop")) $("loop").checked = p.get("loop") !== "0";
   if (p.has("next")) $("next").checked = p.get("next") !== "0";
+  syncNext();
   const vol = parseInt(p.get("vol"), 10);
   if (vol >= 0 && vol <= 100) { $("vol").value = vol; setVolume(); }
   const i = SONGS.findIndex(s => songId(s) === p.get("song"));
@@ -308,7 +310,13 @@ SONGS.forEach((s, i) => {
 });
 $("play").onclick = () => playing ? stop() : play();
 $("vol").oninput = () => { setVolume(); saveHash(); };
-$("loop").onchange = $("next").onchange = saveHash;
+// При повторе мелодия не кончается, поэтому «Затем следующая» ни на что не влияет
+function syncNext() {
+  $("next").disabled = $("loop").checked;
+  $("next").parentElement.title = $("loop").checked ? "Не действует, пока включён повтор" : "";
+}
+$("loop").onchange = () => { syncNext(); saveHash(); };
+$("next").onchange = saveHash;
 window.addEventListener("hashchange", loadHash);
 loadHash();
 saveHash();
